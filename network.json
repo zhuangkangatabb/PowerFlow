@@ -1,0 +1,30 @@
+{
+    "network": {
+        "nodes": [
+            {"id": "1", "type": "source", "voltage": 1.0},
+            {"id": "2", "type": "load", "voltage": 1.0, "load": {"P": 0.5, "Q": 0.3, "P_guaranteed": 0.3, "Q_guaranteed": 0.2}},
+            {"id": "3", "type": "load", "voltage": 1.0, "load": {"P": 0.4, "Q": 0.2, "P_guaranteed": 0.2, "Q_guaranteed": 0.1}}
+        ],
+        "branches": [
+            {
+                "id": "1-2",
+                "from": "1",
+                "to": "2",
+                "impedance": {"R": 0.01, "X": 0.05},
+                "thermal_limit": 2.0
+            },
+            {
+                "id": "2-3",
+                "from": "2",
+                "to": "3",
+                "impedance": {"R": 0.02, "X": 0.04},
+                "thermal_limit": 2.0
+            }
+        ],
+        "parameters": {
+            "voltage_limits": {"min": 0.95, "max": 1.05},
+            "time_steps": 4,
+            "phases": ["a"]
+        }
+    }
+}
