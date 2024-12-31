@@ -15,8 +15,8 @@ This implementation models and solves the problem of congestion mitigation in un
 Since the original problem in the paper is a Mixed-Integer Nonlinear Programming (MINLP) problem that cannot be solved by GLPK, the implementation includes the following adjustment:
 
 - **Thermal Limit Constraint:**
-  - Original: Constraints the \( \ell_2 \)-norm.
-  - Modified: Constraints the \( \ell_1 \)-norm to ensure compatibility with GLPK.
+  - Original: Constraints the $$\ell_2$$-norm.
+  - Modified: Constraints the $$\ell_1$$-norm to ensure compatibility with GLPK.
 
 ---
 
