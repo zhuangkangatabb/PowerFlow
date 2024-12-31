@@ -16,13 +16,13 @@ Since the original problem in the paper is a Mixed-Integer Nonlinear Programming
 
 - **Thermal Limit Constraint:**
   - Original: Constraints the $\ell_2$-norm as follows:
-    $$
-    \sqrt{P^2 + Q^2} \leq \bar{S}
-    $$
+$$
+\sqrt{P^2 + Q^2} \leq \bar{S}
+$$
   - Modified: Constraints the $\ell_1$-norm to ensure compatibility with GLPK:
-    $$
-    |P| + |Q| \leq \bar{S}
-    $$
+$$
+|P| + |Q| \leq \bar{S}
+$$
 
 ---
 
