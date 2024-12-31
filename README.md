@@ -21,7 +21,7 @@ $$
 $$
   - Modified: Constraints the $\ell_1$-norm to ensure compatibility with GLPK:
 $$
-|P| + |Q| \leq \bar{S}
+\|P\| + \|Q\| \leq \bar{S}
 $$
 
 ---
