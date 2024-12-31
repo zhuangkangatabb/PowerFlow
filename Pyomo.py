@@ -100,7 +100,7 @@ for branch in branches:
     for t in model.T:
         for phase in model.Phases:
             model.constraints.add(
-                model.P_flow[b, phase, t]+ model.Q_flow[b, phase, t]<= branch["thermal_limit"][phase]
+                model.P_flow[b, phase, t]+ model.Q_flow[b, phase, t]<= branch["thermal_limit"]
             )
 # 4. Power flow balance constraints
 for node in nodes:
@@ -156,6 +156,7 @@ for n in model.Nodes:
             P_value = value(model.P[n, phase, t])
             Q_value = value(model.Q[n, phase, t])
             u_value = value(model.u[n, phase, t])
+            voltage_value = sqrt(u_value)
             # Check if any variable has a valid value
             if (
                 s_value is not None
@@ -164,7 +165,7 @@ for n in model.Nodes:
                 or u_value is not None
             ):
                 print(
-                    f"Node {n}, Phase {phase}, Time {t}: Status = {s_value}, P = {P_value}, Q = {Q_value}, Voltage^2 = {u_value}"
+                    f"Node {n}, Phase {phase}, Time {t}: Status = {s_value}, P = {P_value}, Q = {Q_value}, Voltage = {voltage_value}"
                 )
 for b in model.Branches:
     for t in model.T:

@@ -3,21 +3,11 @@
         "nodes": [
             {
                 "id": "1",
-                "type": "source",
-                "voltage": {
-                    "a": 2.0,
-                    "b": 2.0,
-                    "c": 2.0
-                }
+                "type": "source"
             },
             {
                 "id": "2",
                 "type": "load",
-                "voltage": {
-                    "a": 1.0,
-                    "b": 1.0,
-                    "c": 1.0
-                },
                 "load": {
                     "P_forecasted": {"a": 1.0, "b": 1.0, "c": 1.0},
                     "Q_forecasted": {"a": 1.0, "b": 1.0, "c": 1.0},
@@ -28,16 +18,21 @@
             {
                 "id": "3",
                 "type": "load",
-                "voltage": {
-                    "a": 1.0,
-                    "b": 1.0,
-                    "c": 1.0
-                },
                 "load": {
                     "P_forecasted": {"a": 1.0, "b": 1.0, "c": 1.0},
                     "Q_forecasted": {"a": 1.0, "b": 1.0, "c": 1.0},
-                    "P_guaranteed": 0.0,
-                    "Q_guaranteed": 0.0
+                    "P_guaranteed": 0.01,
+                    "Q_guaranteed": 0.01
+                }
+            },
+            {
+                "id": "4",
+                "type": "load",
+                "load": {
+                    "P_forecasted": {"a": 1.0, "b": 1.0, "c": 1.0},
+                    "Q_forecasted": {"a": 1.0, "b": 1.0, "c": 1.0},
+                    "P_guaranteed": 0.01,
+                    "Q_guaranteed": 0.01
                 }
             }
         ],
@@ -47,24 +42,34 @@
                 "from": "1",
                 "to": "2",
                 "impedance": {
-                    "R": {"a": 0.0, "b": 0.0, "c": 0.0},
+                    "R": {"a": 0.05, "b": 0.05, "c": 0.05},
                     "X": {"a": 0.05, "b": 0.05, "c": 0.05}
                 },
-                "thermal_limit": {"a": 1000.0, "b": 1000.0, "c": 1000.0}
+                "thermal_limit": 1000.0
             },
             {
                 "id": "2-3",
                 "from": "2",
                 "to": "3",
                 "impedance": {
-                    "R": {"a": 0.0, "b": 0.0, "c": 0.0},
-                    "X": {"a": 0.04, "b": 0.04, "c": 0.04}
+                    "R": {"a": 0.05, "b": 0.05, "c": 0.05},
+                    "X": {"a": 0.05, "b": 0.05, "c": 0.05}
                 },
-                "thermal_limit": {"a": 1000.0, "b": 1000.0, "c": 1000.0}
+                "thermal_limit": 1000.0
+            },
+            {
+                "id": "2-4",
+                "from": "2",
+                "to": "4",
+                "impedance": {
+                    "R": {"a": 0.05, "b": 0.05, "c": 0.05},
+                    "X": {"a": 0.05, "b": 0.05, "c": 0.05}
+                },
+                "thermal_limit": 1000.0
             }
         ],
         "parameters": {
-            "voltage_limits": {"min": 0.95, "max": 1.05},
+            "voltage_limits": {"min": 0.95, "max": 1.1},
             "time_steps": 1,
             "phases": ["a", "b", "c"]
         }
