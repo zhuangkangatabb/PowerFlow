@@ -64,7 +64,7 @@ $$
 
 3. Run the optimization script. For example:
    ```bash
-   python optimization_script.py
+   python Optimization.py
    ```
 
 ---
