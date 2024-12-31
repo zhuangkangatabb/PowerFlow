@@ -59,13 +59,19 @@ class Solver:
 
         time_steps = parameters["time_steps"]
         voltage_limits = parameters["voltage_limits"]
+        u_min = voltage_limits["min"] ** 2
+        u_max = voltage_limits["max"] ** 2
 
         # Variables
-        voltage = casadi.MX.sym("voltage", len(nodes), time_steps)
-        power_flow = casadi.MX.sym("power_flow", len(branches), time_steps)
-        active_power = casadi.MX.sym("active_power", len(nodes), time_steps)
-        reactive_power = casadi.MX.sym("reactive_power", len(nodes), time_steps)
-        status = casadi.MX.sym("status", len(nodes), time_steps)
+        num_nodes = len(nodes)
+        num_branches = len(branches)
+
+        # Decision variables
+        u = casadi.MX.sym("u", num_nodes, time_steps)  # Squared voltage
+        active_power = casadi.MX.sym("active_power", num_nodes, time_steps)
+        reactive_power = casadi.MX.sym("reactive_power", num_nodes, time_steps)
+        power_flow = casadi.MX.sym("power_flow", num_branches, time_steps)
+        status = casadi.MX.sym("status", num_nodes, time_steps)
 
         # Parameters
         load_forecast = [casadi.MX([0] * time_steps) for _ in nodes]
@@ -82,60 +88,44 @@ class Solver:
         # Constraints
         constraints = []
 
-        # Voltage limits
-        for t in range(time_steps):
-            for n, node in enumerate(nodes):
-                constraints.append(voltage_limits["min"] - voltage[n, t])
-                constraints.append(voltage[n, t] - voltage_limits["max"])
+        # Voltage limits (squared voltage)
+        for i in range(num_nodes):
+            for t in range(time_steps):
+                constraints.append(u[i, t] >= u_min)
+                constraints.append(u[i, t] <= u_max)
 
-        # Power flow equations
+        # Power flow thermal limits
+        for b, branch in enumerate(branches):
+            thermal_limit = branch["thermal_limit"]
+            for t in range(time_steps):
+                constraints.append(power_flow[b, t] <= thermal_limit)
+
+        # User demand constraints
+        for i in range(num_nodes):
+            if guaranteed_active_power[i] > 0:
+                for t in range(time_steps):
+                    constraints.append(
+                        active_power[i, t]
+                        == status[i, t] * guaranteed_active_power[i]
+                        + (1 - status[i, t]) * load_forecast[i][t]
+                    )
+                    constraints.append(
+                        reactive_power[i, t]
+                        == status[i, t] * guaranteed_reactive_power[i]
+                        + (1 - status[i, t]) * load_forecast[i][t]
+                    )
+
+        # Power flow equations (simplified linear DistFlow with squared voltage)
         for b, branch in enumerate(branches):
             from_node = int(branch["from"]) - 1
             to_node = int(branch["to"]) - 1
-            R, X = branch["impedance"]["R"], branch["impedance"]["X"]
-
+            R = branch["impedance"]["R"]
+            X = branch["impedance"]["X"]
             for t in range(time_steps):
-                # Active and reactive power flow constraints
                 constraints.append(
-                    active_power[from_node, t]
-                    - active_power[to_node, t]
-                    - power_flow[b, t]
-                )
-                constraints.append(
-                    reactive_power[from_node, t]
-                    - reactive_power[to_node, t]
-                    - X / R * power_flow[b, t]
-                )
-
-                # Voltage drop constraints
-                constraints.append(
-                    voltage[from_node, t]
-                    - voltage[to_node, t]
-                    - (
-                        R * active_power[from_node, t]
-                        + X * reactive_power[from_node, t]
-                    )
-                )
-
-        # User response constraints
-        for t in range(time_steps):
-            for n, node in enumerate(nodes):
-                # Active power based on status
-                constraints.append(
-                    active_power[n, t]
-                    - (
-                        status[n, t] * guaranteed_active_power[n]
-                        + (1 - status[n, t]) * load_forecast[n][t]
-                    )
-                )
-                # Reactive power based on status
-                constraints.append(
-                    reactive_power[n, t]
-                    - (
-                        status[n, t] * guaranteed_reactive_power[n]
-                        + (1 - status[n, t])
-                        * 0  # Assuming no forecasted reactive load if not specified
-                    )
+                    u[to_node, t]
+                    == u[from_node, t]
+                    - 2 * (R * active_power[to_node, t] + X * reactive_power[to_node, t])
                 )
 
         # Objective: Minimize user discomfort (sum of active status variables)
@@ -144,7 +134,7 @@ class Solver:
         # Problem formulation
         problem = {
             "x": casadi.vertcat(
-                casadi.vec(voltage),
+                casadi.vec(u),
                 casadi.vec(power_flow),
                 casadi.vec(active_power),
                 casadi.vec(reactive_power),
@@ -155,9 +145,9 @@ class Solver:
             "f": objective,
             "p_values": [],
             "lbx": [-casadi.inf]
-            * (len(nodes) * time_steps * 4 + len(branches) * time_steps),
+            * (num_nodes * time_steps * 4 + num_branches * time_steps),
             "ubx": [casadi.inf]
-            * (len(nodes) * time_steps * 4 + len(branches) * time_steps),
+            * (num_nodes * time_steps * 4 + num_branches * time_steps),
             "lbg": [0] * len(constraints),
             "ubg": [0] * len(constraints),
         }
