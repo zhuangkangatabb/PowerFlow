@@ -305,9 +305,63 @@ class CongestionMitigation:
                 print_matrix("Active Power Flow (P_flow)", P_flow_matrix)
                 print_matrix("Reactive Power Flow (Q_flow)", Q_flow_matrix)
 
+    def recover_voltage_current(self):
+        """Recover voltage and current from SDP solution."""
+        if not self.results:
+            raise ValueError("No results found. Solve the problem first.")
+
+        data = self.data["network"]
+        nodes = data["nodes"]
+        branches = data["branches"]
+
+        voltage = {}
+        current = {}
+
+        # Initialize voltages at the slack bus
+        slack_bus = "1"  # Assuming bus 1 is the slack bus
+        voltage[slack_bus] = [1.0 + 0j] * 3  # Reference voltage, assuming balanced
+
+        visited = set([slack_bus])
+
+        while len(visited) < len(nodes):
+            for branch in branches:
+                from_node = branch["from"]
+                to_node = branch["to"]
+                if from_node in visited and to_node not in visited:
+                    # Recover current
+                    impedance = branch["impedance"]
+                    R = impedance["R"]
+                    X = impedance["X"]
+                    Z = [[R[i][j] + 1j * X[i][j] for j in range(3)] for i in range(3)]
+
+                    Sij = [[value(self.model.P_flow[branch["id"], i + 1, j + 1, 1]) +
+                            1j * value(self.model.Q_flow[branch["id"], i + 1, j + 1, 1]) for j in range(3)] for i in range(3)]
+                    V_from = voltage[from_node]
+
+                    Iij = [
+                        sum(Sij[i][j] / V_from[j] for j in range(3)) for i in range(3)
+                    ]
+
+                    # Recover voltage at to_node
+                    V_to = [
+                        V_from[i] - sum(Z[i][j] * Iij[j] for j in range(3)) for i in range(3)
+                    ]
+
+                    voltage[to_node] = V_to
+                    current[branch["id"]] = Iij
+                    visited.add(to_node)
+
+        print("Voltages:")
+        for node, volt in voltage.items():
+            print(f"Node {node}: {volt}")
+
+        print("Currents:")
+        for branch_id, curr in current.items():
+            print(f"Branch {branch_id}: {curr}")
 
 simple_example = CongestionMitigation("newnetwork.json")
 simple_example.check_data_sanity()
 simple_example.create_problem()
 simple_example.solve_problem()
 simple_example.show_result()
+simple_example.recover_voltage_current()

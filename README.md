@@ -64,7 +64,7 @@ $$
 
 3. Run the optimization script. For example:
    ```bash
-   python Optimization.py
+   python congestion_mitigation.py
    ```
 
 ---
