@@ -9,30 +9,30 @@
                 "id": "2",
                 "type": "load",
                 "load": {
-                    "P_forecasted": {"a": 1.0, "b": 1.0, "c": 1.0},
-                    "Q_forecasted": {"a": 1.0, "b": 1.0, "c": 1.0},
-                    "P_guaranteed": 0.01,
-                    "Q_guaranteed": 0.01
+                    "P_forecasted": 1.0,
+                    "Q_forecasted": 1.0,
+                    "P_guaranteed": 0.5,
+                    "Q_guaranteed": 0.5
                 }
             },
             {
                 "id": "3",
                 "type": "load",
                 "load": {
-                    "P_forecasted": {"a": 1.0, "b": 1.0, "c": 1.0},
-                    "Q_forecasted": {"a": 1.0, "b": 1.0, "c": 1.0},
-                    "P_guaranteed": 0.01,
-                    "Q_guaranteed": 0.01
+                    "P_forecasted": 1.0,
+                    "Q_forecasted": 1.0,
+                    "P_guaranteed": 0.5,
+                    "Q_guaranteed": 0.5
                 }
             },
             {
                 "id": "4",
                 "type": "load",
                 "load": {
-                    "P_forecasted": {"a": 1.0, "b": 1.0, "c": 1.0},
-                    "Q_forecasted": {"a": 1.0, "b": 1.0, "c": 1.0},
-                    "P_guaranteed": 0.01,
-                    "Q_guaranteed": 0.01
+                    "P_forecasted": 1.0,
+                    "Q_forecasted": 1.0,
+                    "P_guaranteed": 0.5,
+                    "Q_guaranteed": 0.5
                 }
             }
         ],
@@ -53,7 +53,7 @@
                         [0.0, 0.0, 0.05]
                     ]
                 },
-                "thermal_limit": 1000.0
+                "thermal_limit": 5.0
             },
             {
                 "id": "2-3",
@@ -71,7 +71,7 @@
                         [0.0, 0.0, 0.05]
                     ]
                 },
-                "thermal_limit": 1000.0
+                "thermal_limit": 5.0
             },
             {
                 "id": "2-4",
@@ -89,11 +89,11 @@
                         [0.0, 0.0, 0.05]
                     ]
                 },
-                "thermal_limit": 1000.0
+                "thermal_limit": 5.0
             }
         ],
         "parameters": {
-            "voltage_limits": {"min": 0.95, "max": 1.1},
+            "voltage_limits": {"min": 0.8, "max": 1.2},
             "time_steps": 1,
             "phases": ["a", "b", "c"]
         }

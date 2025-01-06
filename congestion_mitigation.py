@@ -32,11 +32,11 @@ class CongestionMitigation:
             if "load" in node:
                 load = node["load"]
                 for phase in ["a", "b", "c"]:
-                    if load["P_guaranteed"] >= load["P_forecasted"][phase]:
+                    if load["P_guaranteed"] >= load["P_forecasted"]:
                         raise ValueError(
                             f"Node {node['id']}: P_guaranteed must be smaller than P_forecasted for phase {phase}."
                         )
-                    if load["Q_guaranteed"] >= load["Q_forecasted"][phase]:
+                    if load["Q_guaranteed"] >= load["Q_forecasted"]:
                         raise ValueError(
                             f"Node {node['id']}: Q_guaranteed must be smaller than Q_forecasted for phase {phase}."
                         )
@@ -149,8 +149,21 @@ class CongestionMitigation:
                 for p in model.Phases:
                     model.constraints.add(voltage_min <= model.u[n, p, p, t])
                     model.constraints.add(model.u[n, p, p, t] <= voltage_max)
+                    
+        # 5. Thermal Limits
+        for branch in branches:
+            branch_id = branch["id"]
+            thermal_limit = branch["thermal_limit"]
+            for t in model.T:
+                for p1 in model.Phases:
+                    for p2 in model.Phases:
+                        model.constraints.add(
+                            model.P_flow[branch_id, p1, p2, t]<= thermal_limit)
+                        model.constraints.add(
+                            model.Q_flow[branch_id, p1, p2, t]<= thermal_limit)
 
-        # 5. Power Flow Balance Constraint
+
+        # 6. Power Flow Balance Constraint
         for node in nodes:
             n = node["id"]
             for t in model.T:
@@ -188,7 +201,8 @@ class CongestionMitigation:
                                 incoming_reactive + model.Q[n, p1, p2, t]
                                 == outgoing_reactive
                             )
-        # Constraint: P + iQ = gamma * diag(P + iQ)
+
+        # 7. Constraint: P + iQ = gamma * diag(P + iQ)
         for branch in branches:
             branch_id = branch["id"]
             for t in model.T:
@@ -212,7 +226,7 @@ class CongestionMitigation:
                             + gamma_imag * model.P_flow[branch_id, p1, p1, t]
                         )
 
-        # 6. User Demand Constraints
+        # 8. User Demand Constraints
         for node in nodes:
             if "load" in node:
                 n = node["id"]
@@ -226,13 +240,13 @@ class CongestionMitigation:
                         model.constraints.add(
                             -model.P[n, phase, phase, t]
                             == model.s[n, t] * load["P_guaranteed"]
-                            + (1 - model.s[n, t]) * load["P_forecasted"][phase_key]
+                            + (1 - model.s[n, t]) * load["P_forecasted"]
                         )
                         # Reactive power constraint
                         model.constraints.add(
                             -model.Q[n, phase, phase, t]
                             == model.s[n, t] * load["Q_guaranteed"]
-                            + (1 - model.s[n, t]) * load["Q_forecasted"][phase_key]
+                            + (1 - model.s[n, t]) * load["Q_forecasted"]
                         )
 
         self.model = model
@@ -359,7 +373,7 @@ class CongestionMitigation:
         for branch_id, curr in current.items():
             print(f"Branch {branch_id}: {curr}")
 
-simple_example = CongestionMitigation("newnetwork.json")
+simple_example = CongestionMitigation("network.json")
 simple_example.check_data_sanity()
 simple_example.create_problem()
 simple_example.solve_problem()
