@@ -28,17 +28,43 @@ class CongestionMitigation:
             raise ValueError("Network data is incomplete.")
 
         # Check guaranteed power vs forecasted power
+        # for node in network["nodes"]:
+        #     if "load" in node:
+        #         load = node["load"]
+        #         for phase in ["a", "b", "c"]:
+        #             if load["P_guaranteed"] >= load["P_forecasted"]:
+        #                 raise ValueError(
+        #                     f"Node {node['id']}: P_guaranteed must be smaller than P_forecasted for phase {phase}."
+        #                 )
+        #             if load["Q_guaranteed"] >= load["Q_forecasted"]:
+        #                 raise ValueError(
+        #                     f"Node {node['id']}: Q_guaranteed must be smaller than Q_forecasted for phase {phase}."
+        #                 )
         for node in network["nodes"]:
             if "load" in node:
-                load = node["load"]
-                for phase in ["a", "b", "c"]:
+                load_list = node["load"]
+                if not isinstance(load_list, list):
+                    raise ValueError(f"Node {node['id']}: Load data must be a list.")
+                for load in load_list:
+                    if not all(
+                        key in load
+                        for key in [
+                            "P_forecasted",
+                            "Q_forecasted",
+                            "P_guaranteed",
+                            "Q_guaranteed",
+                        ]
+                    ):
+                        raise ValueError(
+                            f"Node {node['id']}: Load data is missing required keys."
+                        )
                     if load["P_guaranteed"] >= load["P_forecasted"]:
                         raise ValueError(
-                            f"Node {node['id']}: P_guaranteed must be smaller than P_forecasted for phase {phase}."
+                            f"Node {node['id']}: P_guaranteed must be smaller than P_forecasted at time step {load['time']}."
                         )
                     if load["Q_guaranteed"] >= load["Q_forecasted"]:
                         raise ValueError(
-                            f"Node {node['id']}: Q_guaranteed must be smaller than Q_forecasted for phase {phase}."
+                            f"Node {node['id']}: Q_guaranteed must be smaller than Q_forecasted at time step {load['time']}."
                         )
 
         # Check impedance values
@@ -111,11 +137,28 @@ class CongestionMitigation:
             initialize=0,
         )
 
-        # Objective Function
-        def objective_rule(model):
-            return sum(model.s[n, t] for n in model.Nodes for t in model.T)
+        # Regularization weight (adjust as needed)
+        lambda_rof = 0.0
 
-        model.Objective = Objective(rule=objective_rule, sense=minimize)
+        # Objective Function with ROF Regularization
+        def objective_rule_with_rof(model):
+            # Original objective
+            original_objective = sum(
+                model.s[n, t] for n in model.Nodes for t in model.T
+            )
+
+            # ROF Regularization: Penalize differences between consecutive time steps
+            rof_regularization = sum(
+                abs(model.s[n, t] - model.s[n, t - 1])
+                for n in model.Nodes
+                for t in model.T
+                if t > model.T.first()
+            )
+
+            # Combine the two
+            return original_objective + lambda_rof * rof_regularization
+
+        model.Objective = Objective(rule=objective_rule_with_rof, sense=minimize)
 
         # Constraints
 
@@ -149,7 +192,7 @@ class CongestionMitigation:
                 for p in model.Phases:
                     model.constraints.add(voltage_min <= model.u[n, p, p, t])
                     model.constraints.add(model.u[n, p, p, t] <= voltage_max)
-                    
+
         # 5. Thermal Limits
         for branch in branches:
             branch_id = branch["id"]
@@ -158,10 +201,11 @@ class CongestionMitigation:
                 for p1 in model.Phases:
                     for p2 in model.Phases:
                         model.constraints.add(
-                            model.P_flow[branch_id, p1, p2, t]<= thermal_limit)
+                            model.P_flow[branch_id, p1, p2, t] <= thermal_limit
+                        )
                         model.constraints.add(
-                            model.Q_flow[branch_id, p1, p2, t]<= thermal_limit)
-
+                            model.Q_flow[branch_id, p1, p2, t] <= thermal_limit
+                        )
 
         # 6. Power Flow Balance Constraint
         for node in nodes:
@@ -226,12 +270,18 @@ class CongestionMitigation:
                             + gamma_imag * model.P_flow[branch_id, p1, p1, t]
                         )
 
-        # 8. User Demand Constraints
+        # 8. User Demand Constraints (Modified for time-varying loads)
         for node in nodes:
             if "load" in node:
                 n = node["id"]
-                load = node["load"]
                 for t in model.T:
+                    load_at_t = next(
+                        (load for load in node["load"] if load["time"] == t), None
+                    )
+                    if not load_at_t:
+                        raise ValueError(
+                            f"Node {n}: Missing load data for time step {t}."
+                        )
                     for phase in model.Phases:
                         phase_key = phase_map[
                             phase
@@ -239,14 +289,14 @@ class CongestionMitigation:
                         # Active power constraint
                         model.constraints.add(
                             -model.P[n, phase, phase, t]
-                            == model.s[n, t] * load["P_guaranteed"]
-                            + (1 - model.s[n, t]) * load["P_forecasted"]
+                            == model.s[n, t] * load_at_t["P_guaranteed"]
+                            + (1 - model.s[n, t]) * load_at_t["P_forecasted"]
                         )
                         # Reactive power constraint
                         model.constraints.add(
                             -model.Q[n, phase, phase, t]
-                            == model.s[n, t] * load["Q_guaranteed"]
-                            + (1 - model.s[n, t]) * load["Q_forecasted"]
+                            == model.s[n, t] * load_at_t["Q_guaranteed"]
+                            + (1 - model.s[n, t]) * load_at_t["Q_forecasted"]
                         )
 
         self.model = model
@@ -348,8 +398,15 @@ class CongestionMitigation:
                     X = impedance["X"]
                     Z = [[R[i][j] + 1j * X[i][j] for j in range(3)] for i in range(3)]
 
-                    Sij = [[value(self.model.P_flow[branch["id"], i + 1, j + 1, 1]) +
-                            1j * value(self.model.Q_flow[branch["id"], i + 1, j + 1, 1]) for j in range(3)] for i in range(3)]
+                    Sij = [
+                        [
+                            value(self.model.P_flow[branch["id"], i + 1, j + 1, 1])
+                            + 1j
+                            * value(self.model.Q_flow[branch["id"], i + 1, j + 1, 1])
+                            for j in range(3)
+                        ]
+                        for i in range(3)
+                    ]
                     V_from = voltage[from_node]
 
                     Iij = [
@@ -358,7 +415,8 @@ class CongestionMitigation:
 
                     # Recover voltage at to_node
                     V_to = [
-                        V_from[i] - sum(Z[i][j] * Iij[j] for j in range(3)) for i in range(3)
+                        V_from[i] - sum(Z[i][j] * Iij[j] for j in range(3))
+                        for i in range(3)
                     ]
 
                     voltage[to_node] = V_to
@@ -373,9 +431,10 @@ class CongestionMitigation:
         for branch_id, curr in current.items():
             print(f"Branch {branch_id}: {curr}")
 
+
 simple_example = CongestionMitigation("network.json")
 simple_example.check_data_sanity()
 simple_example.create_problem()
 simple_example.solve_problem()
 simple_example.show_result()
-simple_example.recover_voltage_current()
+# simple_example.recover_voltage_current()
