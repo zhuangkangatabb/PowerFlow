@@ -3,6 +3,7 @@ from pyomo.environ import *
 from cmath import exp, pi
 import matplotlib.pyplot as plt
 
+
 class CongestionMitigation:
     def __init__(self, data_file):
         self.data_file = data_file
@@ -26,7 +27,7 @@ class CongestionMitigation:
             or "parameters" not in network
         ):
             raise ValueError("Network data is incomplete.")
-        
+
         for node in network["nodes"]:
             if "load" in node:
                 load_list = node["load"]
@@ -191,7 +192,13 @@ class CongestionMitigation:
                             model.P_flow[branch_id, p1, p2, t] <= thermal_limit
                         )
                         model.constraints.add(
+                            model.P_flow[branch_id, p2, p1, t] >= -thermal_limit
+                        )
+                        model.constraints.add(
                             model.Q_flow[branch_id, p1, p2, t] <= thermal_limit
+                        )
+                        model.constraints.add(
+                            model.Q_flow[branch_id, p2, p1, t] >= -thermal_limit
                         )
 
         # 4. Power Flow Balance Constraint
@@ -270,9 +277,6 @@ class CongestionMitigation:
                             f"Node {n}: Missing load data for time step {t}."
                         )
                     for phase in model.Phases:
-                        phase_key = phase_map[
-                            phase
-                        ]  # Map integer phase index to JSON key
                         # Active power constraint
                         model.constraints.add(
                             -model.P[n, phase, phase, t]
