@@ -1,7 +1,7 @@
 import json
 from pyomo.environ import *
 from cmath import exp, pi
-
+import matplotlib.pyplot as plt
 
 class CongestionMitigation:
     def __init__(self, data_file):
@@ -26,20 +26,7 @@ class CongestionMitigation:
             or "parameters" not in network
         ):
             raise ValueError("Network data is incomplete.")
-
-        # Check guaranteed power vs forecasted power
-        # for node in network["nodes"]:
-        #     if "load" in node:
-        #         load = node["load"]
-        #         for phase in ["a", "b", "c"]:
-        #             if load["P_guaranteed"] >= load["P_forecasted"]:
-        #                 raise ValueError(
-        #                     f"Node {node['id']}: P_guaranteed must be smaller than P_forecasted for phase {phase}."
-        #                 )
-        #             if load["Q_guaranteed"] >= load["Q_forecasted"]:
-        #                 raise ValueError(
-        #                     f"Node {node['id']}: Q_guaranteed must be smaller than Q_forecasted for phase {phase}."
-        #                 )
+        
         for node in network["nodes"]:
             if "load" in node:
                 load_list = node["load"]
@@ -78,10 +65,12 @@ class CongestionMitigation:
                     raise ValueError(
                         f"Branch {branch['id']} is missing {matrix_name} matrix."
                     )
+            for matrix_name in ["R"]:
+                matrix = impedance.get(matrix_name)
                 for row in matrix:
                     if not all(value >= 0 for value in row):
                         raise ValueError(
-                            f"Branch {branch['id']} has non-positive values in {matrix_name} matrix."
+                            f"Branch {branch['id']} has non-positive resistance values in {matrix_name} matrix."
                         )
 
         # Check branches have valid from and to buses
@@ -161,11 +150,9 @@ class CongestionMitigation:
         model.Objective = Objective(rule=objective_rule_with_rof, sense=minimize)
 
         # Constraints
-
-        # Constraints
         model.constraints = ConstraintList()
 
-        # 3. Ohm's Law for voltage: u = u[from] - Z * Lambda
+        # 1. Ohm's Law for voltage: u = u[from] - Z * Lambda
         for branch in branches:
             from_node = branch["from"]
             to_node = branch["to"]
@@ -185,7 +172,7 @@ class CongestionMitigation:
                             )
                         )
 
-        # 4. Voltage Limits (Diagonal of u)
+        # 2. Voltage Limits (Diagonal of u)
         for node in nodes:
             n = node["id"]
             for t in model.T:
@@ -193,7 +180,7 @@ class CongestionMitigation:
                     model.constraints.add(voltage_min <= model.u[n, p, p, t])
                     model.constraints.add(model.u[n, p, p, t] <= voltage_max)
 
-        # 5. Thermal Limits
+        # 3. Thermal Limits
         for branch in branches:
             branch_id = branch["id"]
             thermal_limit = branch["thermal_limit"]
@@ -207,7 +194,7 @@ class CongestionMitigation:
                             model.Q_flow[branch_id, p1, p2, t] <= thermal_limit
                         )
 
-        # 6. Power Flow Balance Constraint
+        # 4. Power Flow Balance Constraint
         for node in nodes:
             n = node["id"]
             for t in model.T:
@@ -246,7 +233,7 @@ class CongestionMitigation:
                                 == outgoing_reactive
                             )
 
-        # 7. Constraint: P + iQ = gamma * diag(P + iQ)
+        # 5. Constraint: P + iQ = gamma * diag(P + iQ)
         for branch in branches:
             branch_id = branch["id"]
             for t in model.T:
@@ -270,7 +257,7 @@ class CongestionMitigation:
                             + gamma_imag * model.P_flow[branch_id, p1, p1, t]
                         )
 
-        # 8. User Demand Constraints (Modified for time-varying loads)
+        # 6. User Demand Constraints (Modified for time-varying loads)
         for node in nodes:
             if "load" in node:
                 n = node["id"]
