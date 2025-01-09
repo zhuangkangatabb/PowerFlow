@@ -8,7 +8,7 @@ Vanin, Marta & Van Acker, Tom & Ergun, Hakan & D’hulst, Reinhilde & Vanthourno
 
 ## Overview
 
-This implementation models and solves the problem of congestion mitigation in unbalanced residential networks using Pyomo, a Python-based optimization modeling language. The original problem is described in the accompanying PDF file `PowerFlowmodel.pdf`.
+This implementation models and solves the problem of congestion mitigation in unbalanced residential networks using Pyomo, a Python-based optimization modeling language. The original problem is described in the accompanying PDF file `Congestion_mitigation.pdf`.
 
 ### Key Modifications
 
@@ -45,8 +45,8 @@ $$
 
 ## Files
 
-1. **`PowerFlowmodel.pdf`**: Detailed description of the optimization problem as stated in the paper.
-2. **`Optimization`**: Python implementation using the Pyomo package.
+1. **`Congestion_mitigation.pdf`**: Detailed description of the optimization problem as stated in the paper.
+2. **`Congestion_mitigation.py`**: Python implementation using the Pyomo package.
 
 ---
 
@@ -64,7 +64,7 @@ $$
 
 3. Run the optimization script. For example:
    ```bash
-   python congestion_mitigation.py
+   python Congestion_mitigation.py
    ```
 
 ---
