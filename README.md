@@ -86,6 +86,3 @@ Vanin, Marta & Van Acker, Tom & Ergun, Hakan & D’hulst, Reinhilde & Vanthourno
 
 ---
 
-## License
-
-This project is distributed under the MIT License. See the `LICENSE` file for details.
